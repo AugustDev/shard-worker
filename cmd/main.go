@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -51,22 +50,32 @@ func main() {
 	<-sigs
 	logger.Info("Shutdown signal received")
 
-	// Create a deadline for server shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	// Create a context without a deadline for server shutdown
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Attempt to gracefully shutdown the server
-	logger.Info("Shutting down server...")
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("Server forced to shutdown", "error", err)
-	}
+	// Start a goroutine to handle the graceful shutdown
+	go func() {
+		// Attempt to gracefully shutdown the server
+		logger.Info("Initiating server shutdown...")
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Error("Server shutdown error", "error", err)
+		}
 
-	// Wait for the server to finish
-	<-serverStopped
+		// Wait for the server to finish
+		<-serverStopped
+		logger.Info("Server has stopped.")
+
+		// Cancel the context to signal that the server has shut down
+		cancel()
+	}()
 
 	// Wait for all jobs to complete
 	logger.Info("Waiting for all jobs to complete...")
 	wg.Wait()
 
-	logger.Info("All jobs completed. Exiting.")
+	// Wait for the server to finish shutting down
+	<-ctx.Done()
+
+	logger.Info("All jobs completed and server shut down. Exiting.")
 }

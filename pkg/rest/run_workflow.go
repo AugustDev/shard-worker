@@ -26,11 +26,11 @@ func NewService(logger *slog.Logger, nfService *nextflow.Service, wg *sync.WaitG
 func (s *runResource) Run(w http.ResponseWriter, req *http.Request) {
 	s.Logger.Debug("Received request to launch workflow")
 
-	s.Wg.Add(1) // Add to WaitGroup before starting the goroutine
 	go func() {
-		defer s.Wg.Done() // Ensure WaitGroup is decremented when the goroutine finishes
+		s.Wg.Add(1)
+		defer s.Wg.Done()
 		s.Logger.Info("Job started")
-		time.Sleep(5 * time.Second) // Simulating job execution
+		time.Sleep(5 * time.Second)
 		s.Logger.Info("Job ended")
 	}()
 
