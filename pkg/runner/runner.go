@@ -1,9 +1,14 @@
 package runner
 
 type RunConfig struct {
-	Args []string
+	PipelineUrl string
+	Args        []string
 }
 
 type Runner interface {
 	Execute(run RunConfig)
+}
+
+func (r RunConfig) CmdArgs() []string {
+	return append([]string{"run", r.PipelineUrl}, r.Args...)
 }

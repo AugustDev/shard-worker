@@ -30,12 +30,13 @@ func (s *Service) Execute(run runner.RunConfig) {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 
-	command := exec.Command(s.Config.BinPath, run.Args...)
+	command := exec.Command(s.Config.BinPath, run.CmdArgs()...)
 	output, err := command.CombinedOutput()
+
+	s.Logger.Debug("nextflow exec output", "output", string(output))
+
 	if err != nil {
 		s.Logger.Debug("nextflow exec error", "error", err)
 		return
 	}
-
-	s.Logger.Debug("nextflow exec", "output", string(output))
 }

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"nf-shard-orchestrator/pkg/runner"
 	"nf-shard-orchestrator/pkg/runner/nextflow"
 	"sync"
-	"time"
 )
 
 type runResource struct {
@@ -23,14 +23,25 @@ func NewService(logger *slog.Logger, nfService *nextflow.Service, wg *sync.WaitG
 	}
 }
 
-func (s *runResource) Run(w http.ResponseWriter, req *http.Request) {
+func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 	s.Logger.Debug("Received request to launch workflow")
 
+	var req RunRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		s.Logger.Error("run", "error", err)
+		http.Error(w, "could not decode request", http.StatusBadRequest)
+		return
+	}
+
+	run := runner.RunConfig{
+		Args:        req.Args(),
+		PipelineUrl: req.PipelineUrl,
+	}
+
 	go func() {
-		s.Wg.Add(1)
-		defer s.Wg.Done()
 		s.Logger.Info("Job started")
-		time.Sleep(5 * time.Second)
+		s.NfService.Execute(run)
 		s.Logger.Info("Job ended")
 	}()
 

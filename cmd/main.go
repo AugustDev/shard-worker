@@ -10,9 +10,26 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		panic("Error loading .env file")
+	}
+
+	authToken := os.Getenv("TOKEN")
+	if authToken == "" {
+		panic("AUTH_TOKEN environment variable is not set")
+	}
+
+	port := os.Getenv("PORT")
+	if authToken == "" {
+		panic("PORT environment variable is not set")
+	}
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
@@ -28,18 +45,17 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	router := rest.Handler(logger, runService, &wg)
+	router := rest.Handler(logger, runService, &wg, authToken)
 	server := &http.Server{
-		Addr:    ":4001",
+		Addr:    ":" + port,
 		Handler: router,
 	}
 
 	// Channel to signal when the server has stopped
 	serverStopped := make(chan struct{})
 
-	// Start the HTTP server in a goroutine
 	go func() {
-		logger.Info("Starting server on :4001")
+		logger.Info("Starting server on port " + port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("Could not start server", "error", err)
 		}
