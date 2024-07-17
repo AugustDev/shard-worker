@@ -29,23 +29,6 @@ func NewRunner(c Config) *Service {
 	}
 }
 
-func (s *Service) MockExecute(run runner.RunConfig, injectedConfigPath string) error {
-	run = run.DisableTower().Mock()
-
-	args := run.CmdArgs()
-	args = append(args, "-c", injectedConfigPath)
-
-	command := exec.Command(s.Config.BinPath, args...)
-	output, err := command.CombinedOutput()
-
-	if err != nil {
-		s.Logger.Debug("nextflow mock output", "output", string(output))
-		return err
-	}
-	s.Logger.Debug("nextflow mock output", "output", string(output))
-	return nil
-}
-
 func injectConfigFile(configOverride string) (string, error) {
 	tempDir, err := os.MkdirTemp("", "float-runner-")
 	if err != nil {

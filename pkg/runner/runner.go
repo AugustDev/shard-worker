@@ -21,12 +21,11 @@ func (r RunConfig) CmdArgs() []string {
 	return append([]string{"run", r.PipelineUrl}, r.Args...)
 }
 
-func (r RunConfig) DisableTower() RunConfig {
-	r.ConfigOverride = r.ConfigOverride + ` tower { enabled = false }`
-	return r
-}
-
 func (r RunConfig) Mock() RunConfig {
+	r.ConfigOverride = `
+	tower { enabled = false } 
+	process { executor = "local" }
+	`
 	r.Args = append(r.Args, "-preview")
 	return r
 }
@@ -39,7 +38,7 @@ func MockExecute(logger *slog.Logger, run RunConfig, nextflowBinPath string) err
 		return err
 	}
 
-	run = run.DisableTower().Mock()
+	run = run.Mock()
 
 	configFileName := "injected.config"
 	configFilePath := filepath.Join(tempDir, configFileName)
