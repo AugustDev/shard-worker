@@ -1,6 +1,7 @@
 package nextflow
 
 import (
+	"fmt"
 	"log/slog"
 	"nf-shard-orchestrator/pkg/runner"
 	"os"
@@ -58,6 +59,7 @@ func (s *Service) Execute(run runner.RunConfig) {
 	args = append(args, "-c", filePath)
 
 	command := exec.Command(s.Config.BinPath, args...)
+	command.Env = []string{fmt.Sprintf("GITHUB_TOKEN=%s", os.Getenv("GITHUB_TOKEN"))}
 	output, err := command.CombinedOutput()
 
 	if err != nil {

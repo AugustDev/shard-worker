@@ -68,13 +68,17 @@ func extractMounts(configOverride string) []string {
 }
 
 func injectConfig(configOverride string, nfCommand string) string {
+	nfConfig := fmt.Sprintf(`
+export GITHUB_TOKEN=%s
+nextflow_command='%s'`, os.Getenv("GITHUB_TOKEN"), nfCommand)
+
 	config := fileJobSubmitAWS
 
 	// injecting config overrides
 	config = strings.Replace(config, configOverrideNeedle, configOverride, 1)
 
 	// injecting nextflow command
-	config = strings.Replace(config, configNextflowCmdNeedle, nfCommand, 1)
+	config = strings.Replace(config, configNextflowCmdNeedle, nfConfig, 1)
 
 	return config
 }

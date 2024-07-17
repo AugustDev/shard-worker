@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -51,6 +52,7 @@ func MockExecute(logger *slog.Logger, run RunConfig, nextflowBinPath string) err
 	args = append(args, "-c", configFilePath)
 
 	command := exec.Command(nextflowBinPath, args...)
+	command.Env = []string{fmt.Sprintf("GITHUB_TOKEN=%s", os.Getenv("GITHUB_TOKEN"))}
 	output, err := command.CombinedOutput()
 
 	if err != nil {

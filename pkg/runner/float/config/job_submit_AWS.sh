@@ -46,7 +46,7 @@ EOF
 # Important: The -c option appends the mmc config file and soft overrides the nextflow configuration.
 
 # Assembles the Nextflow command with all necessary options and parameters.
-nextflow_command='SHARD_NEXTFLOW_COMMAND'
+SHARD_NEXTFLOW_COMMAND
 
 # -------------------------------------
 # ---- DO NOT EDIT BELOW THIS LINE ----
