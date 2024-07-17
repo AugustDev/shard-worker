@@ -19,6 +19,9 @@ var fileJobSubmitAWS string
 //go:embed config/transient_JFS_AWS.sh
 var fileTransientJFSAWS string
 
+const configOverrideNeedle = "SHARD_CONFIG_OVERRIDE"
+const configNextflowCmdNeedle = "SHARD_NEXTFLOW_COMMAND"
+
 type Config struct {
 	Logger          *slog.Logger
 	Wg              *sync.WaitGroup
@@ -48,18 +51,30 @@ func (s *Service) auth() error {
 	return exec.Command(s.config.FloatBinPath, args...).Run()
 }
 
+func extractMounts(configOverride string) []string {
+	mounts := make([]string, 0)
+	pattern := `--dataVolume\s+(\[.*?\][^\s]+)`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(configOverride, -1)
+
+	for _, match := range matches {
+		if len(match) > 1 {
+			// Trim any leading/trailing whitespace
+			mounts = append(mounts, strings.TrimSpace(match[1]))
+			fmt.Println(strings.TrimSpace(match[1]))
+		}
+	}
+	return mounts
+}
+
 func injectConfig(configOverride string, nfCommand string) string {
 	config := fileJobSubmitAWS
 
 	// injecting config overrides
-	if configOverride != "" {
-		processRe := regexp.MustCompile(`(?s)process\s*\{.*?\}`)
-		config = processRe.ReplaceAllString(fileJobSubmitAWS, configOverride)
-	}
+	config = strings.Replace(config, configOverrideNeedle, configOverride, 1)
 
 	// injecting nextflow command
-	commandRe := regexp.MustCompile(`(?s)nextflow_command='(.*?)'`)
-	config = commandRe.ReplaceAllString(config, "nextflow_command='"+nfCommand+"'")
+	config = strings.Replace(config, configNextflowCmdNeedle, nfCommand, 1)
 
 	return config
 }
@@ -82,6 +97,21 @@ func (s *Service) storeJobFiles(tempDir string, configOverride string, nfCommand
 	return nil
 }
 
+func (s *Service) MockExecute(run runner.RunConfig, injectedConfigPath string) error {
+	args := run.CmdArgs()
+	args = append(args, "-c", injectedConfigPath)
+
+	command := exec.Command(s.config.NextflowBinPath, args...)
+	output, err := command.CombinedOutput()
+
+	if err != nil {
+		s.Logger.Debug("nextflow mock output", "output", string(output))
+		return err
+	}
+	s.Logger.Debug("nextflow mock output", "output", string(output))
+	return nil
+}
+
 func (s *Service) Execute(run runner.RunConfig) {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
@@ -94,7 +124,7 @@ func (s *Service) Execute(run runner.RunConfig) {
 	defer os.RemoveAll(tempDir)
 
 	// generate nextflow command
-	nfArgs := append([]string{s.config.NextflowBinPath, "run", run.PipelineUrl}, run.Args...)
+	nfArgs := append([]string{s.config.NextflowBinPath, "run", run.PipelineUrl, "-c", "mmc.config"}, run.Args...)
 	nfCommand := strings.Join(nfArgs, " ")
 	fmt.Println(nfCommand)
 
@@ -103,13 +133,15 @@ func (s *Service) Execute(run runner.RunConfig) {
 		return
 	}
 
+	mounts := extractMounts(run.ConfigOverride)
+	fmt.Println("mounts", mounts)
+
 	err = s.auth()
 	if err != nil {
 		s.Logger.Error("failed to authenticate", "error", err)
 		return
 	}
 
-	// Prepare the command arguments
 	args := []string{
 		"submit",
 		"--hostInit", filepath.Join(tempDir, "transient_JFS_AWS.sh"),
@@ -129,10 +161,13 @@ func (s *Service) Execute(run runner.RunConfig) {
 		"-j", filepath.Join(tempDir, "job_submit_AWS.sh"),
 	}
 
+	fmt.Println(args)
+
 	cmd := exec.Command(s.config.FloatBinPath, args...)
+	cmd.Dir = tempDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		s.Logger.Debug("float exec error", "error", err)
+		s.Logger.Debug("float exec error", "error", err, "output", output)
 		return
 	}
 	s.Logger.Debug("float exec output", "output", string(output))

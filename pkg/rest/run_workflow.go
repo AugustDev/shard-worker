@@ -43,16 +43,21 @@ func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 		ConfigOverride: req.Executor.ComputeOverride,
 	}
 
+	err = runner.MockExecute(s.Logger, run, s.NfService.Config.BinPath)
+	if err != nil {
+		return
+	}
+
 	switch req.Executor.Name {
 	case "float":
 		go func() {
-			s.Logger.Info("Job started")
+			s.Logger.Info("float job started")
 			s.FloatService.Execute(run)
 			s.Logger.Info("Job ended")
 		}()
-	case "awsbatch":
+	case "awsbatch", "google-batch":
 		go func() {
-			s.Logger.Info("Job started")
+			s.Logger.Info("awsbatch job started")
 			s.NfService.Execute(run)
 			s.Logger.Info("Job ended")
 		}()

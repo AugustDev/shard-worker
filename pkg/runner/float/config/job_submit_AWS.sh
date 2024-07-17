@@ -27,12 +27,7 @@ plugins {
     id 'nf-float'
 }
 
-// Process settings: Executor, error strategy, and resource allocation specifics.
-process {
-    executor = 'float'
-    errorStrategy = 'retry'
-    extra = '--dataVolume [opts=" --cache-dir /mnt/jfs_cache "]jfs://${jfs_private_ip}:6868/1:/mnt/jfs --dataVolume [size=120]:/mnt/jfs_cache --vmPolicy [spotOnly=true,retryLimit=10,retryInterval=300s]'
-}
+SHARD_CONFIG_OVERRIDE
 
 // Directories for Nextflow execution.
 workDir = '${workDir}'
@@ -51,13 +46,7 @@ EOF
 # Important: The -c option appends the mmc config file and soft overrides the nextflow configuration.
 
 # Assembles the Nextflow command with all necessary options and parameters.
-nextflow_command='nextflow run <nextflow-pipeline> \
--r <revision-number> \
--c mmc.config \
--params-file params.yml \
---input samplesheet.csv \
---outdir 's3://nextflow-output/rnaseq/' \
--resume '
+nextflow_command='SHARD_NEXTFLOW_COMMAND'
 
 # -------------------------------------
 # ---- DO NOT EDIT BELOW THIS LINE ----
