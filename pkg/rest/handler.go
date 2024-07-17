@@ -27,8 +27,11 @@ func Handler(logger *slog.Logger, ns *nextflow.Service, wg *sync.WaitGroup, auth
 	runResource := NewService(logger, ns, wg)
 
 	router.Route("/v1", func(r chi.Router) {
-		r.Use(AuthMiddleware(authToken, logger))
-		r.Post("/run", runResource.Run)
+		r.Group(func(r chi.Router) {
+			r.Use(AuthMiddleware(authToken, logger))
+			r.Post("/run", runResource.Run)
+			r.Get("/health", health)
+		})
 	})
 
 	return router
