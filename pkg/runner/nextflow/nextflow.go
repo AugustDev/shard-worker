@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Logger  *slog.Logger
+	Wg      *sync.WaitGroup
 	BinPath string
 }
 
@@ -21,7 +22,7 @@ type Service struct {
 func NewRunner(c Config) *Service {
 	return &Service{
 		Config: c,
-		Wg:     &sync.WaitGroup{},
+		Wg:     c.Wg,
 		Logger: c.Logger,
 	}
 }
@@ -33,10 +34,9 @@ func (s *Service) Execute(run runner.RunConfig) {
 	command := exec.Command(s.Config.BinPath, run.CmdArgs()...)
 	output, err := command.CombinedOutput()
 
-	s.Logger.Debug("nextflow exec output", "output", string(output))
-
 	if err != nil {
 		s.Logger.Debug("nextflow exec error", "error", err)
 		return
 	}
+	s.Logger.Debug("nextflow exec output", "output", string(output))
 }

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"nf-shard-orchestrator/pkg/rest"
+	"nf-shard-orchestrator/pkg/runner/float"
 	"nf-shard-orchestrator/pkg/runner/nextflow"
 	"os"
 	"os/signal"
@@ -36,16 +37,24 @@ func main() {
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
 
+	var wg sync.WaitGroup
+
 	nfRunnerConfig := nextflow.Config{
+		Wg:      &wg,
 		Logger:  logger,
 		BinPath: "nextflow",
 	}
+	nfService := nextflow.NewRunner(nfRunnerConfig)
 
-	runService := nextflow.NewRunner(nfRunnerConfig)
+	floatConfig := float.Config{
+		Logger:          logger,
+		Wg:              &wg,
+		FloatBinPath:    "float2",
+		NextflowBinPath: "nextflow",
+	}
+	floatService := float.NewRunner(floatConfig)
 
-	var wg sync.WaitGroup
-
-	router := rest.Handler(logger, runService, &wg, authToken)
+	router := rest.Handler(logger, nfService, floatService, &wg, authToken)
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: router,

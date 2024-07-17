@@ -1,8 +1,9 @@
 package runner
 
 type RunConfig struct {
-	PipelineUrl string
-	Args        []string
+	PipelineUrl    string
+	ConfigOverride string
+	Args           []string
 }
 
 type Runner interface {
