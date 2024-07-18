@@ -1,6 +1,9 @@
-FROM golang:1.22-alpine
+FROM golang:1.22-bullseye
 
-RUN apk add --no-cache openjdk11-jre-headless curl bash
+RUN apt-get update
+RUN apt-get install -y openjdk-11-jre-headless 
+RUN apt-get install -y curl bash 
+RUN apt-get clean
 
 WORKDIR /app
 
