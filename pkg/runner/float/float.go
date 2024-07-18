@@ -46,7 +46,8 @@ func NewRunner(c Config) *Service {
 func (s *Service) auth() error {
 	user := os.Getenv("FLOAT_USER")
 	pass := os.Getenv("FLOAT_PASS")
-	args := []string{"login", "-u", user, "-p", pass}
+	address := os.Getenv("FLOAT_ADDRESS")
+	args := []string{"login", "-a", address, "-u", user, "-p", pass}
 
 	return exec.Command(s.config.FloatBinPath, args...).Run()
 }
