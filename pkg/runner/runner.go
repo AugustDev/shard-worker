@@ -32,6 +32,13 @@ func (r RunConfig) Mock() RunConfig {
 }
 
 func MockExecute(logger *slog.Logger, run RunConfig, nextflowBinPath string) error {
+	// unable to simulate workflows with `main-script`
+	for _, arg := range run.Args {
+		if arg == "-main-script" {
+			return nil
+		}
+	}
+
 	logger.Debug("Running nextflow mock")
 	tempDir, err := os.MkdirTemp("", "runner-")
 	if err != nil {
@@ -57,7 +64,7 @@ func MockExecute(logger *slog.Logger, run RunConfig, nextflowBinPath string) err
 
 	if err != nil {
 		logger.Debug("nextflow mock error", "error", err, "output", string(output))
-		return err
+		return fmt.Errorf("%w: %s", err, output)
 	}
 	logger.Debug("nextflow mock succeeded", "output", string(output))
 	return nil

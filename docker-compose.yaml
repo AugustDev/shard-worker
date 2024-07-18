@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  shard-worker:
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - PORT=${PORT}
+      - TOKEN=${TOKEN}
+      - FLOAT_USER=${FLOAT_USER}
+      - FLOAT_PASS=${FLOAT_PASS}
+      - FLOAT_AWS_SG=${FLOAT_AWS_SG}
+      - FLOAT_CORES=${FLOAT_CORES}
+      - FLOAT_MEMORY=${FLOAT_MEMORY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}

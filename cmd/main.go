@@ -16,10 +16,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		panic("Error loading .env file")
-	}
+	_ = godotenv.Load()
 
 	authToken := os.Getenv("TOKEN")
 	if authToken == "" {
