@@ -1,12 +1,22 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.22-alpine
+
+RUN apk add --no-cache openjdk11-jre-headless curl bash
+
 WORKDIR /app
+
 COPY go.mod go.sum ./
+
 RUN go mod download
+
 COPY . .
+
 RUN go build -o main ./cmd
 
-FROM alpine:latest  
-WORKDIR /root/
-COPY --from=builder /app/main .
+# Install Nextflow
+RUN curl -s https://get.nextflow.io | bash
+RUN mv nextflow /usr/local/bin/
+
+# Install float
+RUN curl -k -L https://44.207.4.113/float -o /usr/local/bin/float && chmod +x /usr/local/bin/float
 
 CMD ["./main"]
