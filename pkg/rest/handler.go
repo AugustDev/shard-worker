@@ -35,5 +35,7 @@ func Handler(logger *slog.Logger, ns *nextflow.Service, fs *float.Service, wg *s
 		})
 	})
 
+	router.Get("/health", health)
+
 	return router
 }
