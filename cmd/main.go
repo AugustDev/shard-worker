@@ -46,7 +46,7 @@ func main() {
 	floatConfig := float.Config{
 		Logger:          logger,
 		Wg:              &wg,
-		FloatBinPath:    "/usr/local/bin/float2",
+		FloatBinPath:    "float",
 		NextflowBinPath: "nextflow",
 	}
 	floatService := float.NewRunner(floatConfig)
