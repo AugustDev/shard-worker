@@ -45,6 +45,7 @@ func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 
 	err = runner.MockExecute(r.Context(), s.Logger, run, s.NfService.Config.BinPath)
 	if err != nil {
+		s.Logger.Error("run", "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
