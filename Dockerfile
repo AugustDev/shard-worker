@@ -22,4 +22,8 @@ RUN mv nextflow /usr/local/bin/
 # Install float
 RUN curl -k -L https://44.207.4.113/float -o /usr/local/bin/float && chmod +x /usr/local/bin/float
 
-CMD ["./main"]
+# Add AWS_CONTAINER_CREDENTIALS_RELATIVE_URI to environment
+RUN echo 'export AWS_CONTAINER_CREDENTIALS_RELATIVE_URI="$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"' >> /root/.bashrc
+RUN echo 'export AWS_CONTAINER_CREDENTIALS_RELATIVE_URI="$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"' >> /root/.profile
+
+CMD ["bash", "-c", "source /root/.bashrc && ./main"]
