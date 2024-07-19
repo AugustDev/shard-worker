@@ -121,6 +121,9 @@ func (s *Service) Execute(run runner.RunConfig) {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 
+	// work dir will be manaaaged by float
+	run = run.RemoveWorkDir()
+
 	tempDir, err := os.MkdirTemp("", "float-runner-")
 	if err != nil {
 		s.Logger.Error("Failed to create temporary directory", "error", err)

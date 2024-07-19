@@ -32,6 +32,38 @@ func (r RunConfig) Mock() RunConfig {
 	return r
 }
 
+func (r RunConfig) RemoveWorkDir() RunConfig {
+	args := []string{}
+
+	for i, arg := range r.Args {
+		if arg == "-work-dir" || arg == "-bucket-dir" {
+			i++
+			continue
+		}
+		args = append(args, arg)
+	}
+
+	r.Args = args
+	return r
+}
+
+func (r RunConfig) AddWorkDirIfNotExists() RunConfig {
+	workDirExists := false
+
+	for _, arg := range r.Args {
+		if arg == "-work-dir" || arg == "-bucket-dir" {
+			workDirExists = true
+			break
+		}
+	}
+
+	if !workDirExists {
+		r.Args = append(r.Args, "-work-dir", "/tmp")
+	}
+
+	return r
+}
+
 func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextflowBinPath string) error {
 	// unable to simulate workflows with `main-script`
 	for _, arg := range run.Args {
@@ -39,6 +71,9 @@ func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextfl
 			return nil
 		}
 	}
+
+	// for mocking work dir is nescessary
+	run = run.AddWorkDirIfNotExists()
 
 	logger.Debug("Running nextflow mock")
 	tempDir, err := os.MkdirTemp("", "runner-")
