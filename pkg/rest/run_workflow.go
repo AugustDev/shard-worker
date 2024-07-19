@@ -43,7 +43,7 @@ func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 		ConfigOverride: req.Executor.ComputeOverride,
 	}
 
-	err = runner.MockExecute(s.Logger, run, s.NfService.Config.BinPath)
+	err = runner.MockExecute(r.Context(), s.Logger, run, s.NfService.Config.BinPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

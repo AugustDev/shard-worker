@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -31,7 +32,7 @@ func (r RunConfig) Mock() RunConfig {
 	return r
 }
 
-func MockExecute(logger *slog.Logger, run RunConfig, nextflowBinPath string) error {
+func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextflowBinPath string) error {
 	// unable to simulate workflows with `main-script`
 	for _, arg := range run.Args {
 		if arg == "-main-script" {
@@ -58,8 +59,8 @@ func MockExecute(logger *slog.Logger, run RunConfig, nextflowBinPath string) err
 	args := run.CmdArgs()
 	args = append(args, "-c", configFilePath)
 
-	command := exec.Command(nextflowBinPath, args...)
-	command.Env = []string{fmt.Sprintf("GITHUB_TOKEN=%s", os.Getenv("GITHUB_TOKEN"))}
+	command := exec.CommandContext(ctx, nextflowBinPath, args...)
+	command.Env = os.Environ()
 	output, err := command.CombinedOutput()
 
 	if err != nil {
