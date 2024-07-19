@@ -1,9 +1,11 @@
 FROM golang:1.22-bullseye
 
-RUN apt-get update
-RUN apt-get install -y openjdk-11-jre-headless 
-RUN apt-get install -y curl bash 
-RUN apt-get clean
+RUN apt-get update && apt-get install -y \
+    openjdk-11-jre-headless \
+    curl \
+    bash \
+    unzip \
+    && apt-get clean
 
 WORKDIR /app
 
@@ -22,8 +24,10 @@ RUN mv nextflow /usr/local/bin/
 # Install float
 RUN curl -k -L https://44.207.4.113/float -o /usr/local/bin/float && chmod +x /usr/local/bin/float
 
-# Add AWS_CONTAINER_CREDENTIALS_RELATIVE_URI to environment
-RUN echo 'export AWS_CONTAINER_CREDENTIALS_RELATIVE_URI="$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"' >> /root/.bashrc
-RUN echo 'export AWS_CONTAINER_CREDENTIALS_RELATIVE_URI="$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"' >> /root/.profile
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf aws awscliv2.zip
 
-CMD ["bash", "-c", "source /root/.bashrc && ./main"]
+CMD ["./main"]
