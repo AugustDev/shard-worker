@@ -29,3 +29,7 @@ aws ecs update-service \
 ### Terraform
 
 Coming soon
+
+## Acknowledgements
+
+Thank you for Dominykas Juodis his contributions to the project and insightful conversations.
