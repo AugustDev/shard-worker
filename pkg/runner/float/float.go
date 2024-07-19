@@ -104,22 +104,7 @@ func (s *Service) storeJobFiles(tempDir string, configOverride string, nfCommand
 	return nil
 }
 
-func (s *Service) MockExecute(run runner.RunConfig, injectedConfigPath string) error {
-	args := run.CmdArgs()
-	args = append(args, "-c", injectedConfigPath)
-
-	command := exec.Command(s.config.NextflowBinPath, args...)
-	output, err := command.CombinedOutput()
-
-	if err != nil {
-		s.Logger.Debug("nextflow mock output", "output", string(output))
-		return err
-	}
-	s.Logger.Debug("nextflow mock output", "output", string(output))
-	return nil
-}
-
-func (s *Service) Execute(run runner.RunConfig) string {
+func (s *Service) Execute(run runner.RunConfig) (string, error) {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 
@@ -129,27 +114,28 @@ func (s *Service) Execute(run runner.RunConfig) string {
 	tempDir, err := os.MkdirTemp("", "float-runner-")
 	if err != nil {
 		s.Logger.Error("Failed to create temporary directory", "error", err)
-		return ""
+		return "", err
 	}
-	defer os.RemoveAll(tempDir)
 
 	// generate nextflow command
 	nfArgs := append([]string{s.config.NextflowBinPath, "run", run.PipelineUrl, "-c", "mmc.config"}, run.Args...)
 	nfCommand := strings.Join(nfArgs, " ")
 	fmt.Println(nfCommand)
 
+	s.Logger.Info("float execute", "action", "storing job files")
 	err = s.storeJobFiles(tempDir, run.ConfigOverride, nfCommand)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	mounts := extractMounts(run.ConfigOverride)
 	fmt.Println("mounts", mounts)
 
+	s.Logger.Info("float execute", "action", "authenticating")
 	err = s.auth()
 	if err != nil {
 		s.Logger.Error("failed to authenticate", "error", err)
-		return ""
+		return "", err
 	}
 
 	args := []string{
@@ -171,15 +157,19 @@ func (s *Service) Execute(run runner.RunConfig) string {
 		"-j", filepath.Join(tempDir, "job_submit_AWS.sh"),
 	}
 
-	cmd := exec.Command(s.config.FloatBinPath, args...)
-	cmd.Dir = tempDir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		s.Logger.Debug("float exec error", "error", err, "output", output)
-		return ""
-	}
-	s.Logger.Debug("float exec output", "output", string(output))
-	return ""
+	go func() {
+		s.Logger.Info("float execute", "action", "Runnign command")
+		defer os.RemoveAll(tempDir)
+		cmd := exec.Command(s.config.FloatBinPath, args...)
+		cmd.Dir = tempDir
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			s.Logger.Debug("float exec error", "error", err, "output", output)
+		}
+		s.Logger.Debug("float exec output", "output", string(output))
+	}()
+
+	return "", nil
 }
 
 func (s *Service) Stop(c runner.StopConfig) error {

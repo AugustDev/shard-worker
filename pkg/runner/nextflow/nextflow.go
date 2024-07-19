@@ -48,14 +48,14 @@ func injectConfigFile(configOverride string) (string, error) {
 	return filePath, nil
 }
 
-func (s *Service) Execute(run runner.RunConfig) string {
+func (s *Service) Execute(run runner.RunConfig) (string, error) {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 
 	filePath, err := injectConfigFile(run.ConfigOverride)
 	if err != nil {
 		s.Logger.Error("Failed to inject config file", "error", err)
-		return ""
+		return "", err
 	}
 
 	args := run.CmdArgs()
@@ -68,18 +68,18 @@ func (s *Service) Execute(run runner.RunConfig) string {
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		s.Logger.Error("Failed to create stdout pipe", "error", err)
-		return ""
+		return "", err
 	}
 	stderr, err := command.StderrPipe()
 	if err != nil {
 		s.Logger.Error("Failed to create stderr pipe", "error", err)
-		return ""
+		return "", err
 	}
 
 	err = command.Start()
 	if err != nil {
 		s.Logger.Error("Failed to start command", "error", err)
-		return ""
+		return "", err
 	}
 
 	var wg sync.WaitGroup
@@ -110,9 +110,7 @@ func (s *Service) Execute(run runner.RunConfig) string {
 		wg.Wait()
 	}()
 
-	fmt.Println(strconv.Itoa(command.Process.Pid))
-
-	return strconv.Itoa(command.Process.Pid)
+	return strconv.Itoa(command.Process.Pid), nil
 }
 
 func (s *Service) Stop(c runner.StopConfig) error {

@@ -21,7 +21,7 @@ type StopConfig struct {
 }
 
 type Runner interface {
-	Execute(run RunConfig) string
+	Execute(run RunConfig) (string, error)
 	Stop(s StopConfig) error
 	BinPath() string
 }

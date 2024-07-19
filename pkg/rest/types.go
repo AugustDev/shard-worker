@@ -18,7 +18,9 @@ type RunRequest struct {
 }
 
 type RunResponse struct {
-	Status bool `json:"status"`
+	Status     bool   `json:"status"`
+	ProcessKey string `json:"process_key"`
+	Executor   string `json:"executor"`
 }
 
 func (p PipelineParameter) String() []string {

@@ -53,17 +53,25 @@ func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 	var processId string
 	switch req.Executor.Name {
 	case "float":
-		processId = s.FloatService.Execute(run)
+		processId, err = s.FloatService.Execute(run)
 	case "awsbatch", "google-batch":
-		processId = s.NfService.Execute(run)
+		processId, err = s.NfService.Execute(run)
 	default:
 		s.Logger.Error("Invalid executor", "executor", req.Executor.Name)
+	}
+
+	if err != nil {
+		s.Logger.Error("run", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	fmt.Println("process running with ", processId)
 
 	res := RunResponse{
-		Status: true,
+		Status:     true,
+		ProcessKey: processId,
+		Executor:   req.Executor.Name,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
