@@ -32,4 +32,4 @@ Coming soon
 
 ## Acknowledgements
 
-Thank you for Dominykas Juodis his contributions to the project and insightful conversations.
+Dominykas Juodis for his contributions to the project and insightful conversations.
