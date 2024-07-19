@@ -106,11 +106,13 @@ func (s *runResource) Stop(w http.ResponseWriter, r *http.Request) {
 		err = s.NfService.Stop(stop)
 	default:
 		s.Logger.Error("Invalid executor", "executor", req.Executor)
+		return
 	}
 
 	if err != nil {
 		s.Logger.Error("stop process", "error", err)
 		http.Error(w, "could not stop process", http.StatusBadRequest)
+		return
 	}
 
 	res := StopJobResponse{

@@ -105,7 +105,7 @@ func (s *Service) Execute(run runner.RunConfig) (string, error) {
 		defer os.RemoveAll(filepath.Dir(filePath))
 		err = command.Wait()
 		if err != nil {
-			s.Logger.Debug("Command exited with error", "error", err)
+			s.Logger.Info("Command exited with error", "error", err)
 		}
 		wg.Wait()
 	}()
