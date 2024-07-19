@@ -131,13 +131,6 @@ func (s *Service) Execute(run runner.RunConfig) (string, error) {
 	mounts := extractMounts(run.ConfigOverride)
 	fmt.Println("mounts", mounts)
 
-	s.Logger.Info("float execute", "action", "authenticating")
-	err = s.auth()
-	if err != nil {
-		s.Logger.Error("failed to authenticate", "error", err)
-		return "", err
-	}
-
 	args := []string{
 		"submit",
 		"--hostInit", filepath.Join(tempDir, "transient_JFS_AWS.sh"),
@@ -158,6 +151,12 @@ func (s *Service) Execute(run runner.RunConfig) (string, error) {
 	}
 
 	go func() {
+		s.Logger.Info("float execute", "action", "authenticating")
+		err = s.auth()
+		if err != nil {
+			s.Logger.Error("failed to authenticate", "error", err)
+		}
+
 		s.Logger.Info("float execute", "action", "Running command")
 		defer os.RemoveAll(tempDir)
 		cmd := exec.Command(s.config.FloatBinPath, args...)
