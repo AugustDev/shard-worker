@@ -158,7 +158,7 @@ func (s *Service) Execute(run runner.RunConfig) (string, error) {
 	}
 
 	go func() {
-		s.Logger.Info("float execute", "action", "Runnign command")
+		s.Logger.Info("float execute", "action", "Running command")
 		defer os.RemoveAll(tempDir)
 		cmd := exec.Command(s.config.FloatBinPath, args...)
 		cmd.Dir = tempDir
