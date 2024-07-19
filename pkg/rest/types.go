@@ -37,3 +37,12 @@ func (r RunRequest) Args() []string {
 
 	return args
 }
+
+type StopJobRequest struct {
+	ProcessId string `json:"process_id"`
+	Executor  string `json:"executor"`
+}
+
+type StopJobResponse struct {
+	Status bool `json:"status"`
+}

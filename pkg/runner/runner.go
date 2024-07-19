@@ -15,8 +15,15 @@ type RunConfig struct {
 	Args           []string
 }
 
+type StopConfig struct {
+	ProcessId  string
+	RunnerName string
+}
+
 type Runner interface {
-	Execute(run RunConfig)
+	Execute(run RunConfig) string
+	Stop(s StopConfig) error
+	BinPath() string
 }
 
 func (r RunConfig) CmdArgs() []string {
@@ -75,7 +82,7 @@ func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextfl
 	// for mocking work dir is nescessary
 	run = run.AddWorkDirIfNotExists()
 
-	logger.Debug("Running nextflow mock")
+	logger.Info("Running nextflow mock")
 	tempDir, err := os.MkdirTemp("", "runner-")
 	if err != nil {
 		logger.Error("Failed to create temporary directory", "error", err)
@@ -99,7 +106,7 @@ func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextfl
 	output, err := command.CombinedOutput()
 
 	if err != nil {
-		logger.Debug("nextflow mock error", "error", err, "output", string(output))
+		logger.Info("nextflow mock error", "error", err, "output", string(output))
 
 		// open and print .nextflow.log
 		logPath := filepath.Join("", ".nextflow.log")
@@ -107,10 +114,10 @@ func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextfl
 		if nfErr != nil {
 			logger.Error("Failed to read .nextflow.log", "error", err)
 		}
-		logger.Debug("nextflow log", "log", string(logFile))
+		logger.Info("nextflow log", "log", string(logFile))
 
 		return fmt.Errorf("%w: %s", err, output)
 	}
-	logger.Debug("nextflow mock succeeded", "output", string(output))
+	logger.Info("nextflow mock succeeded", "output", string(output))
 	return nil
 }

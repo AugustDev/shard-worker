@@ -13,6 +13,8 @@ import (
 	"sync"
 )
 
+var _ runner.Runner = &Service{}
+
 //go:embed config/job_submit_AWS.sh
 var fileJobSubmitAWS string
 
@@ -117,7 +119,7 @@ func (s *Service) MockExecute(run runner.RunConfig, injectedConfigPath string) e
 	return nil
 }
 
-func (s *Service) Execute(run runner.RunConfig) {
+func (s *Service) Execute(run runner.RunConfig) string {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 
@@ -127,7 +129,7 @@ func (s *Service) Execute(run runner.RunConfig) {
 	tempDir, err := os.MkdirTemp("", "float-runner-")
 	if err != nil {
 		s.Logger.Error("Failed to create temporary directory", "error", err)
-		return
+		return ""
 	}
 	defer os.RemoveAll(tempDir)
 
@@ -138,7 +140,7 @@ func (s *Service) Execute(run runner.RunConfig) {
 
 	err = s.storeJobFiles(tempDir, run.ConfigOverride, nfCommand)
 	if err != nil {
-		return
+		return ""
 	}
 
 	mounts := extractMounts(run.ConfigOverride)
@@ -147,7 +149,7 @@ func (s *Service) Execute(run runner.RunConfig) {
 	err = s.auth()
 	if err != nil {
 		s.Logger.Error("failed to authenticate", "error", err)
-		return
+		return ""
 	}
 
 	args := []string{
@@ -169,14 +171,22 @@ func (s *Service) Execute(run runner.RunConfig) {
 		"-j", filepath.Join(tempDir, "job_submit_AWS.sh"),
 	}
 
-	fmt.Println(args)
-
 	cmd := exec.Command(s.config.FloatBinPath, args...)
 	cmd.Dir = tempDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		s.Logger.Debug("float exec error", "error", err, "output", output)
-		return
+		return ""
 	}
 	s.Logger.Debug("float exec output", "output", string(output))
+	return ""
+}
+
+func (s *Service) Stop(c runner.StopConfig) error {
+	// not implemented
+	return nil
+}
+
+func (s *Service) BinPath() string {
+	return s.config.FloatBinPath
 }

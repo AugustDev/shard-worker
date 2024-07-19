@@ -1,13 +1,18 @@
 package nextflow
 
 import (
+	"bufio"
+	"fmt"
 	"log/slog"
 	"nf-shard-orchestrator/pkg/runner"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
+
+var _ runner.Runner = &Service{}
 
 type Config struct {
 	Logger  *slog.Logger
@@ -43,27 +48,88 @@ func injectConfigFile(configOverride string) (string, error) {
 	return filePath, nil
 }
 
-func (s *Service) Execute(run runner.RunConfig) {
+func (s *Service) Execute(run runner.RunConfig) string {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 
 	filePath, err := injectConfigFile(run.ConfigOverride)
 	if err != nil {
 		s.Logger.Error("Failed to inject config file", "error", err)
-		return
+		return ""
 	}
-	defer os.RemoveAll(filepath.Dir(filePath))
 
 	args := run.CmdArgs()
 	args = append(args, "-c", filePath)
 
 	command := exec.Command(s.Config.BinPath, args...)
 	command.Env = os.Environ()
-	output, err := command.CombinedOutput()
 
+	// Create pipes for stdout and stderr
+	stdout, err := command.StdoutPipe()
 	if err != nil {
-		s.Logger.Debug("nextflow exec error", "error", err)
-		return
+		s.Logger.Error("Failed to create stdout pipe", "error", err)
+		return ""
 	}
-	s.Logger.Debug("nextflow exec output", "output", string(output))
+	stderr, err := command.StderrPipe()
+	if err != nil {
+		s.Logger.Error("Failed to create stderr pipe", "error", err)
+		return ""
+	}
+
+	err = command.Start()
+	if err != nil {
+		s.Logger.Error("Failed to start command", "error", err)
+		return ""
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			s.Logger.Info("Command output", "stdout", scanner.Text())
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			s.Logger.Error("Command error output", "stderr", scanner.Text())
+		}
+	}()
+
+	go func() {
+		defer os.RemoveAll(filepath.Dir(filePath))
+		err = command.Wait()
+		if err != nil {
+			s.Logger.Debug("Command exited with error", "error", err)
+		}
+		wg.Wait()
+	}()
+
+	fmt.Println(strconv.Itoa(command.Process.Pid))
+
+	return strconv.Itoa(command.Process.Pid)
+}
+
+func (s *Service) Stop(c runner.StopConfig) error {
+	pid, err := strconv.Atoi(c.ProcessId)
+	if err != nil {
+		return fmt.Errorf("invalid process ID: %s", c.ProcessId)
+	}
+
+	err = runner.GracefullyStopProcessByID(pid)
+	if err != nil {
+		s.Logger.Info("Failed to stop process", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) BinPath() string {
+	return s.Config.BinPath
 }
