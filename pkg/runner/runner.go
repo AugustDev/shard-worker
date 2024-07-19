@@ -64,6 +64,15 @@ func MockExecute(logger *slog.Logger, run RunConfig, nextflowBinPath string) err
 
 	if err != nil {
 		logger.Debug("nextflow mock error", "error", err, "output", string(output))
+
+		// open and print .nextflow.log
+		logPath := filepath.Join("", ".nextflow.log")
+		logFile, nfErr := os.ReadFile(logPath)
+		if nfErr != nil {
+			logger.Error("Failed to read .nextflow.log", "error", err)
+		}
+		logger.Debug("nextflow log", "log", string(logFile))
+
 		return fmt.Errorf("%w: %s", err, output)
 	}
 	logger.Debug("nextflow mock succeeded", "output", string(output))
