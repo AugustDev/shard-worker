@@ -49,6 +49,10 @@ func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// generating run name
+	runName := runner.GenerateRunName()
+	run = run.SetRunName(runName)
+
 	s.Logger.Info("job starting")
 	var processId string
 	switch req.Executor.Name {
@@ -72,6 +76,7 @@ func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 		Status:     true,
 		ProcessKey: processId,
 		Executor:   req.Executor.Name,
+		RunName:    runName,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

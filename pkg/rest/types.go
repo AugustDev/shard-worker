@@ -21,6 +21,7 @@ type RunResponse struct {
 	Status     bool   `json:"status"`
 	ProcessKey string `json:"process_key"`
 	Executor   string `json:"executor"`
+	RunName    string `json:"run_name"`
 }
 
 func (p PipelineParameter) String() []string {

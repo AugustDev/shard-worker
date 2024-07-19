@@ -7,7 +7,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	petname "github.com/dustinkirkland/golang-petname"
 )
+
+func init() {
+	petname.NonDeterministicMode()
+}
 
 type RunConfig struct {
 	PipelineUrl    string
@@ -71,6 +77,22 @@ func (r RunConfig) AddWorkDirIfNotExists() RunConfig {
 	return r
 }
 
+func (r RunConfig) SetRunName(runName string) RunConfig {
+	args := []string{}
+
+	for i, arg := range r.Args {
+		if arg == "-name" {
+			i++
+			continue
+		}
+		args = append(args, arg)
+	}
+
+	r.Args = append(args, "-name", runName)
+	return r
+
+}
+
 func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextflowBinPath string) error {
 	// unable to simulate workflows with `main-script`
 	for _, arg := range run.Args {
@@ -120,4 +142,9 @@ func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextfl
 	}
 	logger.Info("nextflow mock succeeded", "output", string(output))
 	return nil
+}
+
+func GenerateRunName() string {
+	name := petname.Generate(2, "-")
+	return name
 }
