@@ -57,3 +57,9 @@ func GracefullyStopProcessByID(pid int) error {
 
 	return nil
 }
+
+// nextflow has a bug where sometimes cached github repos are corrupted
+// deleting the repositories as a temporary solution
+func RemoveNfAssetsDir() error {
+	return os.RemoveAll(".nextflow/assets")
+}

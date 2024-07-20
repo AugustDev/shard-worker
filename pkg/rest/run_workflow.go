@@ -42,6 +42,13 @@ func (s *runResource) Run(w http.ResponseWriter, r *http.Request) {
 		ConfigOverride: req.Executor.ComputeOverride,
 	}
 
+	err = runner.RemoveNfAssetsDir()
+	if err != nil {
+		s.Logger.Error("run", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	err = runner.MockExecute(r.Context(), s.Logger, run, s.NfService.BinPath())
 	if err != nil {
 		s.Logger.Error("run", "error", err)
