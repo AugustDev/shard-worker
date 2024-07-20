@@ -1,10 +1,17 @@
 package rest
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strings"
 )
+
+type contextKey struct {
+	name string
+}
+
+var userCtxKey = &contextKey{"user"}
 
 func AuthMiddleware(validToken string, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -30,6 +37,8 @@ func AuthMiddleware(validToken string, logger *slog.Logger) func(http.Handler) h
 				return
 			}
 
+			ctx := context.WithValue(r.Context(), userCtxKey, token)
+			r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
 	}
