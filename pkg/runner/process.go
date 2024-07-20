@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -61,5 +62,10 @@ func GracefullyStopProcessByID(pid int) error {
 // nextflow has a bug where sometimes cached github repos are corrupted
 // deleting the repositories as a temporary solution
 func RemoveNfAssetsDir() error {
-	return os.RemoveAll(".nextflow/assets")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(homeDir, ".nextflow", "assets")
+	return os.RemoveAll(path)
 }
