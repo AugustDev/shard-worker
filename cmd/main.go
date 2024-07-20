@@ -175,9 +175,3 @@ func gqlSchema(logger *slog.Logger, nc *nats.Conn, nfService runner.Runner, floa
 	config.Directives.Authorized = auth.Authorized()
 	return graph.NewExecutableSchema(config)
 }
-
-type contextKey struct {
-	name string
-}
-
-var userCtxKey = &contextKey{"user"}
