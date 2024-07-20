@@ -2,7 +2,10 @@ package graph
 
 import (
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"log/slog"
+	"nf-shard-orchestrator/graph/model"
+	"nf-shard-orchestrator/pkg/cache"
 	"nf-shard-orchestrator/pkg/runner"
 	"sync"
 )
@@ -17,4 +20,7 @@ type Resolver struct {
 	NFService    runner.Runner
 	FloatService runner.Runner
 	Wg           *sync.WaitGroup
+	Nc           *nats.Conn
+	Js           jetstream.JetStream
+	LogCache     *cache.Cache[model.Log]
 }

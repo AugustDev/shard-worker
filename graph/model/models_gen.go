@@ -7,6 +7,11 @@ type Executor struct {
 	ComputeOverride string `json:"computeOverride"`
 }
 
+type Log struct {
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
+}
+
 type Mutation struct {
 }
 
@@ -20,6 +25,7 @@ type Query struct {
 }
 
 type RunJobCommand struct {
+	RunName     string       `json:"runName"`
 	PipelineURL string       `json:"pipelineUrl"`
 	Executor    *Executor    `json:"executor"`
 	Parameters  []*Parameter `json:"parameters"`
@@ -30,6 +36,9 @@ type RunJobResponse struct {
 	ProcessKey string `json:"processKey"`
 	Executor   string `json:"executor"`
 	RunName    string `json:"runName"`
+}
+
+type Subscription struct {
 }
 
 type TerminateJobCommand struct {

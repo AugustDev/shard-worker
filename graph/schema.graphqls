@@ -30,6 +30,7 @@ input Executor {
 }
 
 input RunJobCommand {
+  runName: String!
   pipelineUrl: String!
   executor: Executor!
   parameters: [Parameter!]!
@@ -55,4 +56,13 @@ type Mutation {
 type Query {
     healthCheck: Boolean!
     checkStatus: Boolean! @Authorized
+}
+
+type Subscription {
+  streamLogs(runName: String!): Log!
+}
+
+type Log {
+  message: String!
+  timestamp: String!
 }

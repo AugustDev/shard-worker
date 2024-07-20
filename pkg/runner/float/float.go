@@ -1,9 +1,14 @@
 package float
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"log/slog"
+	"nf-shard-orchestrator/graph/model"
+	"nf-shard-orchestrator/pkg/cache"
 	"nf-shard-orchestrator/pkg/runner"
 	"os"
 	"os/exec"
@@ -29,19 +34,28 @@ type Config struct {
 	Wg              *sync.WaitGroup
 	FloatBinPath    string
 	NextflowBinPath string
+	Js              jetstream.JetStream
+	Nc              *nats.Conn
+	LogCache        *cache.Cache[model.Log]
 }
 
 type Service struct {
-	config Config
-	Wg     *sync.WaitGroup
-	Logger *slog.Logger
+	config   Config
+	Wg       *sync.WaitGroup
+	Logger   *slog.Logger
+	Js       jetstream.JetStream
+	Nc       *nats.Conn
+	LogCache *cache.Cache[model.Log]
 }
 
 func NewRunner(c Config) *Service {
 	return &Service{
-		config: c,
-		Wg:     c.Wg,
-		Logger: c.Logger,
+		config:   c,
+		Wg:       c.Wg,
+		Logger:   c.Logger,
+		Js:       c.Js,
+		Nc:       c.Nc,
+		LogCache: c.LogCache,
 	}
 }
 
@@ -104,7 +118,7 @@ func (s *Service) storeJobFiles(tempDir string, configOverride string, nfCommand
 	return nil
 }
 
-func (s *Service) Execute(run runner.RunConfig) (string, error) {
+func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName string) (string, error) {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 

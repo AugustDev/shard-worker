@@ -10,12 +10,15 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi"
 	"github.com/gorilla/websocket"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/rs/cors"
 	"log"
 	"log/slog"
 	"net/http"
 	"nf-shard-orchestrator/graph"
+	"nf-shard-orchestrator/graph/model"
 	"nf-shard-orchestrator/pkg/auth"
+	"nf-shard-orchestrator/pkg/cache"
 	"nf-shard-orchestrator/pkg/runner"
 	"nf-shard-orchestrator/pkg/runner/float"
 	"nf-shard-orchestrator/pkg/runner/nextflow"
@@ -49,7 +52,7 @@ func main() {
 	logOpts := &slog.HandlerOptions{Level: slog.LevelDebug}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, logOpts))
 
-	nc, _, err := RunEmbeddedNatsServer()
+	nc, _, js, err := RunEmbeddedNatsServer()
 	if err != nil {
 		logger.Error("Failed to start NATS srv", "error", err)
 		return
@@ -57,10 +60,15 @@ func main() {
 
 	var wg sync.WaitGroup
 
+	logCache := cache.NewCache[model.Log]()
+
 	nfRunnerConfig := nextflow.Config{
-		Wg:      &wg,
-		Logger:  logger,
-		BinPath: "nextflow",
+		Wg:       &wg,
+		Logger:   logger,
+		BinPath:  "nextflow",
+		Nc:       nc,
+		Js:       js,
+		LogCache: logCache,
 	}
 	nfService := nextflow.NewRunner(nfRunnerConfig)
 
@@ -69,10 +77,13 @@ func main() {
 		Wg:              &wg,
 		FloatBinPath:    "float",
 		NextflowBinPath: "nextflow",
+		Nc:              nc,
+		Js:              js,
+		LogCache:        logCache,
 	}
 	floatService := float.NewRunner(floatConfig)
 
-	go RunGraphQLServer(nc, logger, nfService, floatService, &wg, port, authToken)
+	go RunGraphQLServer(nc, js, logger, nfService, floatService, &wg, port, logCache)
 
 	<-sigs
 	logger.Info("Shutdown signal received")
@@ -92,28 +103,33 @@ func main() {
 }
 
 // RunEmbeddedNatsServer - Nats Server + Client, to be replaced with a separate service later
-func RunEmbeddedNatsServer() (*nats.Conn, *server.Server, error) {
+func RunEmbeddedNatsServer() (*nats.Conn, *server.Server, jetstream.JetStream, error) {
 	natsOpts := &server.Options{}
 
 	ns, err := server.NewServer(natsOpts)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	go ns.Start()
 	if !ns.ReadyForConnections(5 * time.Second) {
-		return nil, nil, errors.New("nats server not ready for connections")
+		return nil, nil, nil, errors.New("nats server not ready for connections")
 	}
 
 	nc, err := nats.Connect(ns.ClientURL())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return nc, ns, nil
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return nc, ns, js, nil
 }
 
-func RunGraphQLServer(nc *nats.Conn, logger *slog.Logger, nfService runner.Runner, floatService runner.Runner, wg *sync.WaitGroup, port string, authToken string) {
+func RunGraphQLServer(nc *nats.Conn, js jetstream.JetStream, logger *slog.Logger, nfService runner.Runner, floatService runner.Runner, wg *sync.WaitGroup, port string, logCache *cache.Cache[model.Log]) {
 	corsOpts := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
@@ -125,12 +141,11 @@ func RunGraphQLServer(nc *nats.Conn, logger *slog.Logger, nfService runner.Runne
 	router.Use(auth.AuthMiddleware(logger))
 	router.Use(corsOpts.Handler)
 
-	srv := handler.New(gqlSchema(logger, nc, nfService, floatService, wg))
+	srv := handler.New(gqlSchema(logger, nc, js, nfService, floatService, wg, logCache))
 	srv.AddTransport(transport.SSE{})
 	srv.AddTransport(transport.POST{})
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
-	// srv.AddTransport(transport.MultipartForm{})
 
 	srv.AddTransport(transport.Websocket{
 		KeepAlivePingInterval: 10 * time.Second,
@@ -162,7 +177,8 @@ func RunGraphQLServer(nc *nats.Conn, logger *slog.Logger, nfService runner.Runne
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 
-func gqlSchema(logger *slog.Logger, nc *nats.Conn, nfService runner.Runner, floatService runner.Runner, wg *sync.WaitGroup) graphql.ExecutableSchema {
+func gqlSchema(logger *slog.Logger, nc *nats.Conn, js jetstream.JetStream, nfService runner.Runner, floatService runner.Runner, wg *sync.WaitGroup, logCache *cache.Cache[model.Log]) graphql.ExecutableSchema {
+
 	config := graph.Config{
 		Resolvers: &graph.Resolver{
 			NatsConn:     nc,
@@ -170,6 +186,9 @@ func gqlSchema(logger *slog.Logger, nc *nats.Conn, nfService runner.Runner, floa
 			NFService:    nfService,
 			FloatService: floatService,
 			Wg:           wg,
+			Nc:           nc,
+			Js:           js,
+			LogCache:     logCache,
 		},
 	}
 	config.Directives.Authorized = auth.Authorized()

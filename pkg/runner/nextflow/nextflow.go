@@ -2,9 +2,15 @@ package nextflow
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"log/slog"
+	"nf-shard-orchestrator/graph/model"
+	"nf-shard-orchestrator/pkg/cache"
 	"nf-shard-orchestrator/pkg/runner"
+	logstream "nf-shard-orchestrator/pkg/streamlogs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,22 +21,31 @@ import (
 var _ runner.Runner = &Service{}
 
 type Config struct {
-	Logger  *slog.Logger
-	Wg      *sync.WaitGroup
-	BinPath string
+	Logger   *slog.Logger
+	Wg       *sync.WaitGroup
+	BinPath  string
+	Js       jetstream.JetStream
+	Nc       *nats.Conn
+	LogCache *cache.Cache[model.Log]
 }
 
 type Service struct {
-	Config Config
-	Wg     *sync.WaitGroup
-	Logger *slog.Logger
+	Config   Config
+	Wg       *sync.WaitGroup
+	Logger   *slog.Logger
+	Js       jetstream.JetStream
+	Nc       *nats.Conn
+	LogCache *cache.Cache[model.Log]
 }
 
 func NewRunner(c Config) *Service {
 	return &Service{
-		Config: c,
-		Wg:     c.Wg,
-		Logger: c.Logger,
+		Config:   c,
+		Wg:       c.Wg,
+		Logger:   c.Logger,
+		Js:       c.Js,
+		Nc:       c.Nc,
+		LogCache: c.LogCache,
 	}
 }
 
@@ -48,7 +63,7 @@ func injectConfigFile(configOverride string) (string, error) {
 	return filePath, nil
 }
 
-func (s *Service) Execute(run runner.RunConfig) (string, error) {
+func (s *Service) Execute(bgCtx context.Context, run runner.RunConfig, runName string) (string, error) {
 	s.Wg.Add(1)
 	defer s.Wg.Done()
 
@@ -89,7 +104,16 @@ func (s *Service) Execute(run runner.RunConfig) (string, error) {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			s.Logger.Info("Command output", "stdout", scanner.Text())
+			text := scanner.Text()
+			msg := model.Log{
+				Message: text,
+			}
+			err = logstream.PublishLog(s.Nc, runName, msg, s.LogCache)
+			if err != nil {
+				s.Logger.Error("Failed to publish log", "error", err)
+			}
+			s.Logger.Info("Command output", "stdout", text)
+
 		}
 	}()
 
@@ -97,7 +121,12 @@ func (s *Service) Execute(run runner.RunConfig) (string, error) {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			s.Logger.Error("Command error output", "stderr", scanner.Text())
+			text := scanner.Text()
+			s.Logger.Error("Command error output", "stderr", text)
+			msg := model.Log{
+				Message: text,
+			}
+			_ = logstream.PublishLog(s.Nc, runName, msg, s.LogCache)
 		}
 	}()
 

@@ -3,7 +3,11 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/nats-io/nats.go"
 	"log/slog"
+	"nf-shard-orchestrator/graph/model"
+	"nf-shard-orchestrator/pkg/cache"
+	logstream "nf-shard-orchestrator/pkg/streamlogs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +31,7 @@ type StopConfig struct {
 }
 
 type Runner interface {
-	Execute(run RunConfig) (string, error)
+	Execute(ctx context.Context, run RunConfig, runName string) (string, error)
 	Stop(s StopConfig) error
 	BinPath() string
 }
@@ -93,13 +97,16 @@ func (r RunConfig) SetRunName(runName string) RunConfig {
 
 }
 
-func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextflowBinPath string) error {
+func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextflowBinPath string, nc *nats.Conn, runName string, logCache *cache.Cache[model.Log]) error {
 	// unable to simulate workflows with `main-script`
 	for _, arg := range run.Args {
 		if arg == "-main-script" {
 			return nil
 		}
 	}
+
+	// name has to be unique for mock
+	run = run.SetRunName(runName + "-mock")
 
 	// for mocking work dir is nescessary
 	run = run.AddWorkDirIfNotExists()
@@ -129,6 +136,16 @@ func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextfl
 
 	if err != nil {
 		logger.Info("nextflow mock error", "error", err, "output", string(output))
+		err = logstream.PublishLog(nc, runName, model.Log{Message: err.Error()}, logCache)
+		if err != nil {
+			logger.Error("Failed to publish log", "error", err)
+			return err
+		}
+		err = logstream.PublishLog(nc, runName, model.Log{Message: string(output)}, logCache)
+		if err != nil {
+			logger.Error("Failed to publish log", "error", err)
+			return err
+		}
 
 		// open and print .nextflow.log
 		logPath := filepath.Join("", ".nextflow.log")
@@ -137,14 +154,13 @@ func MockExecute(ctx context.Context, logger *slog.Logger, run RunConfig, nextfl
 			logger.Error("Failed to read .nextflow.log", "error", err)
 		}
 		logger.Info("nextflow log", "log", string(logFile))
-
 		return fmt.Errorf("%w: %s", err, output)
 	}
 	logger.Info("nextflow mock succeeded", "output", string(output))
+	err = logstream.PublishLog(nc, runName, model.Log{Message: string(output)}, logCache)
+	if err != nil {
+		logger.Error("Failed to publish log", "error", err)
+		return err
+	}
 	return nil
-}
-
-func GenerateRunName() string {
-	name := petname.Generate(2, "-")
-	return name
 }
