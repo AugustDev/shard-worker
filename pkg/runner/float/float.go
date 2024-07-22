@@ -4,8 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 	"log/slog"
 	"nf-shard-orchestrator/graph/model"
 	"nf-shard-orchestrator/pkg/cache"
@@ -16,6 +14,9 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 var _ runner.Runner = &Service{}
@@ -155,6 +156,7 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-experiments/:/cfdx-experiments",
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-research-data/:/cfdx-research-data",
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data/:/cfdx-raw-data",
+		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data-entry/:/cfdx-raw-data-entry",
 		"--dirMap", "/mnt/jfs:/mnt/jfs",
 		"-c", "8",
 		"-m", "16",
