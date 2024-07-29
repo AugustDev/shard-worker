@@ -146,6 +146,12 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 	mounts := extractMounts(run.ConfigOverride)
 	fmt.Println("mounts", mounts)
 
+	sg := os.Getenv("FLOAT_AWS_SG")
+	if sg == "" {
+		s.Logger.Error("FLOAT_AWS_SG not set")
+		return "", fmt.Errorf("FLOAT_AWS_SG not set")
+	}
+
 	args := []string{
 		"submit",
 		"--hostInit", filepath.Join(tempDir, "transient_JFS_AWS.sh"),
@@ -161,7 +167,7 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"-c", "8",
 		"-m", "16",
 		"-n", "shard-run",
-		"--securityGroup", "sg-0e3a2750bdf58794c",
+		"--securityGroup", sg,
 		"--env", "BUCKET=https://cfdx-juicefs2.s3.us-east-1.amazonaws.com",
 		"-j", filepath.Join(tempDir, "job_submit_AWS.sh"),
 	}
