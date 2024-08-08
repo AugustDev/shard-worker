@@ -16,42 +16,9 @@ mkdir -p $workDir  # Ensures the working directory exists.
 cd $workDir  # Changes to the working directory.
 export NXF_HOME=$workDir  # Sets the NXF_HOME environment variable to the working directory.
 
-# ---- Nextflow Configuration File Creation ----
-# This section creates a Nextflow configuration file with various settings for the pipeline execution.
-
-# Use cat to create or overwrite the mmc.config file with the desired Nextflow configurations.
-# NOTE: S3 keys and OpCenter information will be concatted to the end of the config file. No need to add them now
-cat > mmc.config << EOF
-// enable nf-float plugin.
-plugins {
-    id 'nf-float'
-}
-
-SHARD_CONFIG_OVERRIDE
-
-// Directories for Nextflow execution.
-workDir = '${workDir}'
-launchDir = '${workDir}'
-
-EOF
-
-# ---- Data Preparation ----
-# Use this section to copy essential files from S3 to the working directory.
-
-# For example, copy the sample sheet and params.yml from S3 to the current working directory.
-# aws s3 cp s3://nextflow-input/samplesheet.csv .
-# aws s3 cp s3://nextflow-input/scripts/params.yml .
-
-# ---- Nextflow Command Setup ----
-# Important: The -c option appends the mmc config file and soft overrides the nextflow configuration.
-
-# Assembles the Nextflow command with all necessary options and parameters.
-SHARD_NEXTFLOW_COMMAND
-
-# -------------------------------------
-# ---- DO NOT EDIT BELOW THIS LINE ----
-# -------------------------------------
-# The following section contains functions and commands that should not be modified by the user.
+# ------------------------------------------
+# ---- vvv DO NOT EDIT THIS SECTION vvv ----
+# ------------------------------------------
 
 function install_float {
   # Install float
@@ -74,70 +41,7 @@ function get_secret {
   fi
 }
 
-function remove_old_metadata () {
-  echo $(date): "First finding and removing old metadata..."
-  if [[ $BUCKET == *"amazonaws.com"* ]]; then
-    # If default `amazonaws.com` endpoint url
-    S3_MOUNT=s3://$(echo $BUCKET | sed 's:.*/::' | awk -F'[/.]s3.' '{print $1}')
-  else
-    # If no 'amazonaws.com,' the bucket is using a custom endpoint
-    local bucket_name=$(echo $BUCKET | sed 's:.*/::' | awk -F'[/.]s3.' '{print $1}')
-    S3_MOUNT="--endpoint-url $(echo "${BUCKET//$bucket_name.}") s3://$bucket_name"
-  fi
-  # If a previous job id was given, we use that as the old metadata
-  if [[ ! -z $PREVIOUS_JOB_ID ]]; then
-    echo $(date): "Previous job id $PREVIOUS_JOB_ID specified. Looking for metadata file in bucket..."
-    FOUND_METADATA=$(aws s3 ls $S3_MOUNT | grep "$PREVIOUS_JOB_ID.meta.json.gz" | awk '{print $4}')
-  fi
-
-  if [[ -z "$FOUND_METADATA" ]]; then
-    # If no previous job id was given, there is no old metadata to remove.
-    echo $(date): "No previous metadata dump found. Continuing with dumping current JuiceFs"
-  else
-    echo $(date): "Previous metadata dump found! Removing $FOUND_METADATA"
-    aws s3 rm $S3_MOUNT/$FOUND_METADATA
-    echo $(date): "Previous metadata $FOUND_METADATA removed"
-  fi
-
-}
-
-function dump_and_cp_metadata() {
-  echo $(date): "Attempting to dump JuiceFS data"
-
-  if [[ -z "$FOUND_METADATA" ]]; then
-    # If no previous metadata was found, use the current job id
-    juicefs dump redis://$(echo $WORKER_ADDR):6868/1 $(echo $FLOAT_JOB_ID).meta.json.gz --keep-secret-key
-    echo $(date): "JuiceFS metadata $FLOAT_JOB_ID.meta.json.gz created. Copying to JuiceFS Bucket"
-    aws s3 cp "$(echo $FLOAT_JOB_ID).meta.json.gz" $S3_MOUNT
-  else
-    # If previous metadata was found, use the id of the previous metadata
-    # This means for all jobs that use the same mount, their id will always be their first job id
-    metadata_name=$PREVIOUS_JOB_ID
-    juicefs dump redis://$(echo $WORKER_ADDR):6868/1 $(echo $metadata_name).meta.json.gz --keep-secret-key
-    echo $(date): "JuiceFS metadata $metadata_name.meta.json.gz created. Copying to JuiceFS Bucket"
-    aws s3 cp "$(echo $metadata_name).meta.json.gz" $S3_MOUNT
-  fi
-
-  echo $(date): "Copying to JuiceFS Bucket complete!"
-}
-
-function copy_nextflow_log() {
-  echo $(date): "Copying .nextflow.log to bucket.."
-  if [[ ! -z $PREVIOUS_JOB_ID ]]; then
-    aws s3 cp ".nextflow.log" $S3_MOUNT/$PREVIOUS_JOB_ID.nextflow.log
-    echo $(date): "Copying .nextflow.log complete! You can find it with aws s3 ls $S3_MOUNT/$PREVIOUS_JOB_ID.nextflow.log"
-  else
-    aws s3 cp ".nextflow.log" $S3_MOUNT/$(echo $FLOAT_JOB_ID).nextflow.log
-    echo $(date): "Copying .nextflow.log complete! You can find it with aws s3 ls $S3_MOUNT/$(echo $FLOAT_JOB_ID).nextflow.log"
-  fi
-}
-
-# Variables
-S3_MOUNT=""
-FOUND_METADATA=""
-
-# Functions pre-Nextflow run
-# AWS S3 Access and Secret Keys: For accessing S3 buckets.
+# Set Opcenter credentials
 install_float 
 access_key=$(get_secret AWS_BUCKET_ACCESS_KEY)
 secret_key=$(get_secret AWS_BUCKET_SECRET_KEY)
@@ -148,7 +52,31 @@ opcenter_ip_address=$(get_secret OPCENTER_IP_ADDRESS)
 opcenter_username=$(get_secret OPCENTER_USERNAME)
 opcenter_password=$(get_secret OPCENTER_PASSWORD)
 
-# Append to config file
+# ------------------------------------------
+# ---- ^^^ DO NOT EDIT THIS SECTION ^^^ ----
+# ------------------------------------------
+
+# ---- Nextflow Configuration File Creation ----
+# This section creates a Nextflow configuration file with various settings for the pipeline execution.
+
+# Use cat to create or overwrite the mmc.config file with the desired Nextflow configurations.
+# NOTE: S3 keys and OpCenter information will be concatted to the end of the config file. No need to add them now
+
+# Additionally, please add your STAGE MOUNT BUCKETS here
+cat > mmc.config << EOF
+// enable nf-float plugin.
+plugins {
+    id 'nf-float'
+}
+
+SHARD_CONFIG_OVERRIDE
+
+// Directories for Nextflow execution.
+workDir = '${workDir}'
+launchDir = '${workDir}'
+
+EOF
+
 cat <<EOT >> mmc.config
 
 // OpCenter connection settings.
@@ -168,6 +96,24 @@ aws {
   secretKey = '${secret_key}'
 }
 EOT
+
+# ---- Data Preparation ----
+# Use this section to copy essential files from S3 to the working directory.
+
+# For example, copy the sample sheet and params.yml from S3 to the current working directory.
+# aws s3 cp s3://nextflow-input/samplesheet.csv .
+# aws s3 cp s3://nextflow-input/scripts/params.yml .
+
+# ---- Nextflow Command Setup ----
+# Important: The -c option appends the mmc config file and soft overrides the nextflow configuration.
+
+# Assembles the Nextflow command with all necessary options and parameters.
+SHARD_NEXTFLOW_COMMAND
+
+# ---------------------------------------------
+# ---- vvv DO NOT EDIT BELOW THIS LINE vvv ----
+# ---------------------------------------------
+# The following section contains functions and commands that should not be modified by the user.
 
 # Create side script to tag head node - exits when properly tagged
 cat > tag_nextflow_head.sh << EOF
@@ -203,14 +149,8 @@ $nextflow_command
 
 if [[ $? -ne 0 ]]; then
   echo $(date): "Nextflow command failed."
-  remove_old_metadata
-  dump_and_cp_metadata
-  copy_nextflow_log
   exit 1
 else 
   echo $(date): "Nextflow command succeeded."
-  remove_old_metadata
-  dump_and_cp_metadata
-  copy_nextflow_log
   exit 0
 fi

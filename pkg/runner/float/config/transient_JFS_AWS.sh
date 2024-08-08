@@ -221,10 +221,6 @@ function mount_jfs {
 
 function prepare_user_env {
   if [[ $FLOAT_USER_ID -eq 0 ]]; then
-    ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa >/dev/null
-    mv ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
-    set_secret ~/.ssh/id_rsa
-    rm -f ~/.ssh/id_rsa
     USER_PROFILE=/root/.bash_profile
   else
     systemctl stop munge
