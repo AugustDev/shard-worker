@@ -27,6 +27,9 @@ var fileJobSubmitAWS string
 //go:embed config/transient_JFS_AWS.sh
 var fileTransientJFSAWS string
 
+//go:embed config/hostTerminate_AWS.sh
+var fileHostTerminateAWS string
+
 const configOverrideNeedle = "SHARD_CONFIG_OVERRIDE"
 const configNextflowCmdNeedle = "SHARD_NEXTFLOW_COMMAND"
 
@@ -105,6 +108,7 @@ func (s *Service) storeJobFiles(tempDir string, configOverride string, nfCommand
 	files := map[string]string{
 		"job_submit_AWS.sh":    injectConfig(configOverride, nfCommand),
 		"transient_JFS_AWS.sh": fileTransientJFSAWS,
+		"hostTerminate_AWS.sh": fileHostTerminateAWS,
 	}
 
 	for filename, content := range files {
@@ -169,6 +173,7 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"-n", "shard-run",
 		"--securityGroup", sg,
 		"--env", "BUCKET=https://cfdx-juicefs2.s3.us-east-1.amazonaws.com",
+		"--hostTerminate", filepath.Join(tempDir, "hostTerminate_AWS.sh"),
 		"-j", filepath.Join(tempDir, "job_submit_AWS.sh"),
 	}
 
