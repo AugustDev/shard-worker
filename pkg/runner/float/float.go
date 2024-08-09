@@ -167,6 +167,7 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-research-data/:/cfdx-research-data",
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data/:/cfdx-raw-data",
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data-entry/:/cfdx-raw-data-entry",
+		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-nih-sra-entry/:/cfdx-nih-sra-entry",
 		"--dirMap", "/mnt/jfs:/mnt/jfs",
 		"-c", "8",
 		"-m", "16",
