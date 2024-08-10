@@ -163,7 +163,7 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"--vmPolicy", "[onDemand=true]",
 		"--migratePolicy", "[disable=true]",
 		"--dataVolume", "[size=120]:/mnt/jfs_cache",
-		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-experiments/:/cfdx-experiments",
+		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=rw]s3://cfdx-experiments/:/cfdx-experiments",
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-research-data/:/cfdx-research-data",
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data/:/cfdx-raw-data",
 		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data-entry/:/cfdx-raw-data-entry",
