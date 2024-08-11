@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -70,22 +69,6 @@ func (s *Service) auth() error {
 	args := []string{"login", "-a", address, "-u", user, "-p", pass}
 
 	return exec.Command(s.config.FloatBinPath, args...).Run()
-}
-
-func extractMounts(configOverride string) []string {
-	mounts := make([]string, 0)
-	pattern := `--dataVolume\s+(\[.*?\][^\s]+)`
-	re := regexp.MustCompile(pattern)
-	matches := re.FindAllStringSubmatch(configOverride, -1)
-
-	for _, match := range matches {
-		if len(match) > 1 {
-			// Trim any leading/trailing whitespace
-			mounts = append(mounts, strings.TrimSpace(match[1]))
-			fmt.Println(strings.TrimSpace(match[1]))
-		}
-	}
-	return mounts
 }
 
 func injectConfig(configOverride string, nfCommand string) string {
@@ -147,9 +130,6 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		return "", err
 	}
 
-	mounts := extractMounts(run.ConfigOverride)
-	fmt.Println("mounts", mounts)
-
 	sg := os.Getenv("FLOAT_AWS_SG")
 	if sg == "" {
 		s.Logger.Error("FLOAT_AWS_SG not set")
@@ -163,11 +143,6 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"--vmPolicy", "[onDemand=true]",
 		"--migratePolicy", "[disable=true]",
 		"--dataVolume", "[size=120]:/mnt/jfs_cache",
-		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=rw]s3://cfdx-experiments/:/cfdx-experiments",
-		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-research-data/:/cfdx-research-data",
-		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data/:/cfdx-raw-data",
-		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-raw-data-entry/:/cfdx-raw-data-entry",
-		"--dataVolume", "[endpoint=s3.us-east-1.amazonaws.com,mode=r]s3://cfdx-nih-sra-entry/:/cfdx-nih-sra-entry",
 		"--dirMap", "/mnt/jfs:/mnt/jfs",
 		"-c", "8",
 		"-m", "16",
@@ -177,6 +152,10 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"--hostTerminate", filepath.Join(tempDir, "hostTerminate_AWS.sh"),
 		"-j", filepath.Join(tempDir, "job_submit_AWS.sh"),
 	}
+
+	// extract and attach mounts
+	mounts := extractMountPaths(run.ConfigOverride)
+	args = append(args, mounts...)
 
 	go func() {
 		s.Logger.Info("float execute", "action", "authenticating")
