@@ -216,7 +216,7 @@ function mount_jfs {
   mkdir -p /mnt/jfs
   chmod 777 /mnt/jfs
   log "juicefs mount redis://127.0.0.1:$JFS_META_PORT/1 $JFS_MOUNT_POINT -d $JFS_MOUNT_OPTS --root-squash $FLOAT_USER_ID"
-  juicefs mount redis://127.0.0.1:$JFS_META_PORT/1 $JFS_MOUNT_POINT -d $JFS_MOUNT_OPTS --root-squash $FLOAT_USER_ID --log $FLOAT_INSTANCE_FOLDER/jfs.log
+  juicefs mount redis://127.0.0.1:$JFS_META_PORT/1 $JFS_MOUNT_POINT -d $JFS_MOUNT_OPTS --root-squash $FLOAT_USER_ID --log $FLOAT_INSTANCE_FOLDER/jfs.log --cache-size 150000
 }
 
 function prepare_user_env {
@@ -253,4 +253,4 @@ format_jfs
 mount_jfs
 prepare_user_env
 
-exit 0
+exit 0  

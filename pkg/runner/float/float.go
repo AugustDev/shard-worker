@@ -142,7 +142,7 @@ func (s *Service) Execute(ctx context.Context, run runner.RunConfig, runName str
 		"-i", "docker.io/memverge/juiceflow",
 		"--vmPolicy", "[onDemand=true]",
 		"--migratePolicy", "[disable=true]",
-		"--dataVolume", "[size=120]:/mnt/jfs_cache",
+		"--dataVolume", "[size=300]:/mnt/jfs_cache",
 		"--dirMap", "/mnt/jfs:/mnt/jfs",
 		"-c", "8",
 		"-m", "16",

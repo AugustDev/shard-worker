@@ -15,6 +15,7 @@ workDir='/mnt/jfs/'$workDir_suffix
 mkdir -p $workDir  # Ensures the working directory exists.
 cd $workDir  # Changes to the working directory.
 export NXF_HOME=$workDir  # Sets the NXF_HOME environment variable to the working directory.
+export NXF_ENABLE_FS_SYNC=true
 
 # ------------------------------------------
 # ---- vvv DO NOT EDIT THIS SECTION vvv ----
@@ -79,6 +80,11 @@ EOF
 
 cat <<EOT >> mmc.config
 
+executor {
+  queueSize = 1000
+  pollInterval = '5s'
+}
+
 // OpCenter connection settings.
 float {
     address = '${opcenter_ip_address}'
@@ -89,7 +95,7 @@ float {
 // AWS S3 Client configuration.
 aws {
   client {
-    maxConnections = 20
+    maxConnections = 100
     connectionTimeout = 300000
   }
   accessKey = '${access_key}'
